@@ -102,7 +102,9 @@ def path_filter(extensions=None, exclude_paths=[]):
     return True
   return the_filter
 
-_default_path_filter = path_filter(extensions=['php', 'phpt', 'js', 'css'])
+_default_path_filter = path_filter(
+  extensions=['php', 'phpt', 'js', 'css', 'rb', 'erb']
+)
 
 def run_interactive(query, editor=None, just_count=False):
   """
