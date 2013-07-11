@@ -73,6 +73,11 @@ So, while at Facebook, I wrote a script that does exactly that. codemod.py a nif
 It's one of those tools where, the more you use it, the more you think of places to use it -- and the more you realize how much you were compromising the quality of your code because reconsidering heavily-used code patterns sounded just too damn annoying. I use it pretty much every day.
 
 
+Dependencies
+------------
+
+* python2
+
 Credits
 -------
 
