@@ -737,7 +737,7 @@ def print_through_less(text):
   tempfile = NamedTemporaryFile()
   tempfile.write(text)
   tempfile.flush()
-  os.system('less --quit-if-one-screen %s' % tempfile.name)
+  os.system('less --no-init --quit-if-one-screen %s' % tempfile.name)
 
 
 #
@@ -792,6 +792,7 @@ if __name__ == '__main__':
   try:
     options = _parse_command_line()
   except _UsageException:
+    print(__doc__)
     print_through_less(__doc__.strip())
     sys.exit(2)
   run_interactive(**options)
