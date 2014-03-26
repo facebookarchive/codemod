@@ -807,7 +807,6 @@ if __name__ == '__main__':
   try:
     options = _parse_command_line()
   except _UsageException:
-    print(__doc__)
     print_through_less(__doc__.strip())
     sys.exit(2)
   run_interactive(**options)
