@@ -118,6 +118,8 @@ def run_interactive(query, editor=None, just_count=False):
                       places in the codebase where the query matches.
   """
 
+  global yes_to_all
+
   # Load start from bookmark, if appropriate.
   bookmark = _load_bookmark()
   if bookmark:
@@ -143,6 +145,12 @@ def run_interactive(query, editor=None, just_count=False):
     _ask_about_patch(patch, editor)
     print 'Searching...'
   _delete_bookmark()
+  if yes_to_all:
+    terminal_clear()
+    print "You MUST indicate in your code review: \"codemod with 'Yes to all'\".\
+ Make sure you and other people review the changes.\n\nWith great power, comes \
+great responsibility."
+
 
 def line_transformation_suggestor(line_transformation, line_filter=None):
   """
@@ -557,8 +565,9 @@ def print_patch(patch, lines_to_print, file_lines=None):
   for i in xrange(patch.end_line_number, end_context_line_number):
     print_file_line(i)
 
-
+yes_to_all = False
 def _ask_about_patch(patch, editor):
+  global yes_to_all
   terminal_clear()
   terminal_print('%s\n' % patch.render_range(), color='WHITE')
   print
@@ -569,18 +578,24 @@ def _ask_about_patch(patch, editor):
   print
 
   if patch.new_lines is not None:
-    print 'Accept change (y = yes [default], n = no, e = edit, E = yes+edit)? ',
-    p = _prompt('yneE', default='y')
+    if not yes_to_all:
+      print 'Accept change (y = yes [default], n = no, e = edit, \
+A = yes to all, E = yes+edit)? ',
+      p = _prompt('yneEA', default='y')
+    else:
+      p = 'y'
   else:
     print '(e = edit [default], n = skip line)? ',
     p = _prompt('en', default='e')
 
+  if p in 'A':
+    yes_to_all = True
+    p = 'y'
   if p in 'yE':
     patch.apply_to(lines)
     _save(patch.path, lines)
   if p in 'eE':
     run_editor(patch.start_position, editor)
-
 
 def _prompt(letters='yn', default=None):
   """
