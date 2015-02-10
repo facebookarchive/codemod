@@ -56,6 +56,8 @@ Options (all optional) include:
     through, just before which to end.
   --extensions
     A comma-delimited list of file extensions to process.
+  --exclude_paths
+    A comma-delimited list of paths to exclude.
   --editor
     Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
     environment variable.
@@ -766,7 +768,8 @@ def _parse_command_line():
   try:
     opts, remaining_args = getopt.gnu_getopt(
         sys.argv[1:], 'md:',
-        ['start=', 'end=', 'extensions=', 'editor=', 'count', 'test'])
+        ['start=', 'end=', 'extensions=', 'exclude_paths=',
+         'editor=', 'count', 'test'])
   except getopt.error:
     raise _UsageException()
   opts = dict(opts)
@@ -790,9 +793,11 @@ def _parse_command_line():
     query_options['end'] = opts['--end']
   if '-d' in opts:
     query_options['root_directory'] = opts['-d']
-  if '--extensions' in opts:
+  if '--extensions' in opts or '--exclude_paths' in opts:
     query_options['path_filter'] = (
-        path_filter(extensions=opts['--extensions'].split(',')))
+        path_filter(extensions=opts['--extensions'].split(',') \
+                    if '--extensions' in opts else None,
+                    exclude_paths=opts.get('--exclude_paths', '').split(',')))
 
   options = {}
   options['query'] = Query(**query_options)
