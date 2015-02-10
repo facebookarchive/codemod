@@ -98,9 +98,10 @@ def path_filter(extensions=None, exclude_paths=[]):
     if extensions:
       if not any(path.endswith('.' + extension) for extension in extensions):
         return False
-    for excluded in exclude_paths:
-      if path.startswith(excluded) or path.startswith('./' + excluded):
-        return False
+    if exclude_paths:
+      for excluded in exclude_paths:
+        if path.startswith(excluded) or path.startswith('./' + excluded):
+          return False
     return True
   return the_filter
 
@@ -797,7 +798,8 @@ def _parse_command_line():
     query_options['path_filter'] = (
         path_filter(extensions=opts['--extensions'].split(',') \
                     if '--extensions' in opts else None,
-                    exclude_paths=opts.get('--exclude_paths', '').split(',')))
+                    exclude_paths=opts.get['--exclude_paths'].split(',') \
+                    if '--exclude_paths' in opts else None))
 
   options = {}
   options['query'] = Query(**query_options)
