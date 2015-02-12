@@ -370,8 +370,13 @@ class Query:
                  Query._path_looks_like_code(path) and self.path_filter(path))
 
     for path in path_list:
+      try:
+        lines = list(open(path))
+      except IOError:
+        # If we can't open the file--perhaps it's a symlink whose
+        # destination no loner exists--then short-circuit.
+        continue
 
-      lines = list(open(path))
       for patch in self.suggestor(lines):
         if path == start_pos.path:
           if patch.start_line_number < start_pos.line_number:
