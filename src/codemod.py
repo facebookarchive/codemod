@@ -93,12 +93,11 @@ def matches_extension(path, extension):
   >>> matches_extension("./LICENSE", "LICENSE")
   True
   """
-  root, ext = os.path.splitext(path)
+  _, ext = os.path.splitext(path)
   if ext == '':
-    # If there is not extension, grab the file name and
+    # If there is no extension, grab the file name and
     # compare it to the given extension.
-    file_name = os.path.split(root)[1]
-    return file_name == extension
+    return os.path.basename(path) == extension
   else:
     # If the is an extension, drop the leading period and
     # compare it to the extension.
@@ -107,7 +106,7 @@ def matches_extension(path, extension):
 def path_filter(extensions=None, exclude_paths=[]):
   """
   Returns a function (useful as the path_filter field of a Query instance)
-  that returns True if the path it is given has an extension one of the
+  that returns True iff the path it is given has an extension one of the
   file extensions specified in `extensions`, an array of strings.
 
   >>> map(path_filter(extensions=['js', 'php']), ['./profile.php', './q.jjs'])
