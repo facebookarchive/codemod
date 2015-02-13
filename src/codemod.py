@@ -81,20 +81,45 @@ See the documentation for the Query class for details.
 
 import sys, os
 
+def matches_extension(path, extension):
+  """
+  Returns True if path has the given extension, or if
+  the last path component matches the extension.
+
+  >>> matches_extension("./www/profile.php", "php")
+  True
+  >>> matches_extension("./scripts/menu.js", "html")
+  False
+  >>> matches_extension("./LICENSE", "LICENSE")
+  True
+  """
+  root, ext = os.path.splitext(path)
+  if ext == '':
+    # If there is not extension, grab the file name and
+    # compare it to the given extension.
+    file_name = os.path.split(root)[1]
+    return file_name == extension
+  else:
+    # If the is an extension, drop the leading period and
+    # compare it to the extension.
+    return ext[1:] == extension
+
 def path_filter(extensions=None, exclude_paths=[]):
   """
   Returns a function (useful as the path_filter field of a Query instance)
-  that returns True iff the path it is given has an extension one of the
+  that returns True if the path it is given has an extension one of the
   file extensions specified in `extensions`, an array of strings.
 
   >>> map(path_filter(extensions=['js', 'php']), ['./profile.php', './q.jjs'])
   [True, False]
   >>> map(path_filter(exclude_paths=['html']), ['./html/x.php', './lib/y.js'])
   [False, True]
+  >>> map(path_filter(extensions=['js', 'BUILD']), ['./a.js', './BUILD', './profile.php'])
+  [True, True, False]
   """
   def the_filter(path):
     if extensions:
-      if not any(path.endswith('.' + extension) for extension in extensions):
+      if not any(matches_extension(path, extension) for extension in extensions):
         return False
     for excluded in exclude_paths:
       if path.startswith(excluded) or path.startswith('./' + excluded):
