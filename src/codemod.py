@@ -86,6 +86,17 @@ import sys, os
 def is_extensionless(path):
   """
   Returns True if path has no extension.
+
+  >>> is_extensionless("./www/test")
+  True
+  >>> is_extensionless("./www/.profile")
+  True
+  >>> is_extensionless("./www/.dir/README")
+  True
+  >>> is_extensionless("./scripts/menu.js")
+  False
+  >>> is_extensionless("./LICENSE")
+  True
   """
   _, ext = os.path.splitext(path)
   if ext == '':
