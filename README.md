@@ -44,6 +44,9 @@ Options (all optional) include:
       through, just before which to end.
     --extensions
       A comma-delimited list of file extensions to process.
+    --include-extensionless
+      If set, this will check files without an extension, along with any
+      matching file extensions passed in --extensions
     --editor
       Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
       environment variable.
