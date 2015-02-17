@@ -56,6 +56,9 @@ Options (all optional) include:
     through, just before which to end.
   --extensions
     A comma-delimited list of file extensions to process.
+  --include-extensionless
+    If set, this will check files without an extension, along with any
+    matching file extensions passed in --extensions
   --editor
     Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
     environment variable.
@@ -80,6 +83,26 @@ See the documentation for the Query class for details.
 
 
 import sys, os
+def is_extensionless(path):
+  """
+  Returns True if path has no extension.
+
+  >>> is_extensionless("./www/test")
+  True
+  >>> is_extensionless("./www/.profile")
+  True
+  >>> is_extensionless("./www/.dir/README")
+  True
+  >>> is_extensionless("./scripts/menu.js")
+  False
+  >>> is_extensionless("./LICENSE")
+  True
+  """
+  _, ext = os.path.splitext(path)
+  if ext == '':
+    return True
+  else:
+    return False
 
 def matches_extension(path, extension):
   """
@@ -299,7 +322,8 @@ class Query:
                start=None,
                end=None,
                root_directory='.',
-               path_filter=_default_path_filter):
+               path_filter=_default_path_filter,
+               inc_extensionless=False):
     """
     @param suggestor            A function that takes a list of lines and
                                 generates instances of Patch to suggest.
@@ -321,12 +345,15 @@ class Query:
     @param root_directory       The path whose ancestor files are to be explored.
     @param path_filter          Given a path, returns True or False.  If False,
                                 the entire file is ignored.
+    @param inc_extensionless    If True, will include all files without an
+                                extension when checking against the path_filter
     """
     self.suggestor          = suggestor
     self._start             = start
     self._end               = end
     self.root_directory     = root_directory
     self.path_filter        = path_filter
+    self.inc_extensionless  = inc_extensionless
     self._all_patches_cache = None
 
   def clone(self):
@@ -391,8 +418,9 @@ class Query:
     path_list = Query._walk_directory(self.root_directory)
     path_list = Query._sublist(path_list, start_pos.path, end_pos.path)
     path_list = (path for path in path_list if
-                 Query._path_looks_like_code(path) and self.path_filter(path))
-
+                 Query._path_looks_like_code(path)
+                  and (self.path_filter(path))
+                  or (self.inc_extensionless and is_extensionless(path)))
     for path in path_list:
       try:
         lines = list(open(path))
@@ -461,7 +489,6 @@ class Query:
     return ('/.' not in path and path[-1] != '~'
             and not path.endswith('tags')
             and not path.endswith('TAGS'))
-
 
 class Position:
   """
@@ -795,7 +822,8 @@ def _parse_command_line():
   try:
     opts, remaining_args = getopt.gnu_getopt(
         sys.argv[1:], 'md:',
-        ['start=', 'end=', 'extensions=', 'editor=', 'count', 'test'])
+        ['start=', 'end=', 'extensions=', 'editor=', 'count', 'test',
+        'include-extensionless'])
   except getopt.error:
     raise _UsageException()
   opts = dict(opts)
@@ -822,6 +850,8 @@ def _parse_command_line():
   if '--extensions' in opts:
     query_options['path_filter'] = (
         path_filter(extensions=opts['--extensions'].split(',')))
+  if '--include-extensionless' in opts:
+    query_options['inc_extensionless'] = True
 
   options = {}
   options['query'] = Query(**query_options)
