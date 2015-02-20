@@ -59,6 +59,8 @@ Options (all optional) include:
   --include-extensionless
     If set, this will check files without an extension, along with any
     matching file extensions passed in --extensions
+  --exclude_paths
+    A comma-delimited list of paths to exclude.
   --editor
     Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
     environment variable.
@@ -143,9 +145,10 @@ def path_filter(extensions=None, exclude_paths=[]):
     if extensions:
       if not any(matches_extension(path, extension) for extension in extensions):
         return False
-    for excluded in exclude_paths:
-      if path.startswith(excluded) or path.startswith('./' + excluded):
-        return False
+    if exclude_paths:
+      for excluded in exclude_paths:
+        if path.startswith(excluded) or path.startswith('./' + excluded):
+          return False
     return True
   return the_filter
 
@@ -822,8 +825,8 @@ def _parse_command_line():
   try:
     opts, remaining_args = getopt.gnu_getopt(
         sys.argv[1:], 'md:',
-        ['start=', 'end=', 'extensions=', 'editor=', 'count', 'test',
-        'include-extensionless'])
+        ['start=', 'end=', 'extensions=', 'exclude_paths=',
+         'include-extensionless', 'editor=', 'count', 'test'])
   except getopt.error:
     raise _UsageException()
   opts = dict(opts)
@@ -847,11 +850,12 @@ def _parse_command_line():
     query_options['end'] = opts['--end']
   if '-d' in opts:
     query_options['root_directory'] = opts['-d']
-  if '--extensions' in opts:
+  if '--extensions' in opts or '--exclude_paths' in opts:
     query_options['path_filter'] = (
-        path_filter(extensions=opts['--extensions'].split(',')))
-  if '--include-extensionless' in opts:
-    query_options['inc_extensionless'] = True
+        path_filter(extensions=opts['--extensions'].split(',') \
+                    if '--extensions' in opts else None,
+                    exclude_paths=opts.get['--exclude_paths'].split(',') \
+                    if '--exclude_paths' in opts else None))
 
   options = {}
   options['query'] = Query(**query_options)
