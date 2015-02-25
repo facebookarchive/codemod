@@ -854,7 +854,7 @@ def _parse_command_line():
     query_options['path_filter'] = (
         path_filter(extensions=opts['--extensions'].split(',') \
                     if '--extensions' in opts else None,
-                    exclude_paths=opts.get['--exclude_paths'].split(',') \
+                    exclude_paths=opts.get('--exclude_paths').split(',') \
                     if '--exclude_paths' in opts else None))
 
   options = {}
