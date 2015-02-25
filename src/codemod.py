@@ -18,71 +18,6 @@
 #
 # @author Justin Rosenstein
 
-r"""
-codemod.py is a tool/library to assist you with large-scale codebase refactors
-that can be partially automated but still require human oversight and
-occassional intervention.
-
-Example: Let's say you're deprecating your use of the <font> tag.  From the
-command line, you might make progress by running:
-
-  codemod.py -m -d /home/jrosenstein/www --extensions php,html \
-             '<font *color="?(.*?)"?>(.*?)</font>' \
-             '<span style="color: \1;">\2</span>'
-
-For each match of the regex, you'll be shown a colored diff, and asked if you
-want to accept the change (the replacement of the <font> tag with a <span>
-tag), reject it, or edit the line in question in your $EDITOR of choice.
-
-Usage: last two arguments are a regular expression to match and a substitution
-       string, respectively.  Or you can omit the substitution string, and just
-       be prompted on each match for whether you want to edit in your editor.
-
-Options (all optional) include:
-
-  -m
-    Have regex work over multiple lines (e.g. have dot match newlines).  By
-    default, codemod applies the regex one line at a time.
-  -d
-    The path whose descendent files are to be explored.  Defaults to current dir.
-  --start
-    A path:line_number-formatted position somewhere in the hierarchy from which
-    to being exploring, or a percentage (e.g. "--start 25%") of the way through
-    to start.  Useful if you're divvying up the substitution task across
-    multiple people.
-  --end
-    A path:line_number-formatted position somewhere in the hierarchy just
-    *before* which we should stop exploring, or a percentage of the way
-    through, just before which to end.
-  --extensions
-    A comma-delimited list of file extensions to process.
-  --include-extensionless
-    If set, this will check files without an extension, along with any
-    matching file extensions passed in --extensions
-  --exclude_paths
-    A comma-delimited list of paths to exclude.
-  --editor
-    Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
-    environment variable.
-  --count
-    Don't run normally.  Instead, just print out number of times places in the
-    codebase where the 'query' matches.
-  --test
-    Don't run normally.  Instead, just run the unit tests embedded in the
-    codemod library.
-
-You can also use codemod for transformations that are much more sophisticated
-than regular expression substitution.  Rather than using the command line, you
-write Python code that looks like:
-
-  import codemod
-  codemod.Query(...).run_interactive()
-
-See the documentation for the Query class for details.
-
-@author Justin Rosenstein
-"""
-
 
 import sys, os
 def is_extensionless(path):
@@ -821,48 +756,106 @@ def print_through_less(text):
 class _UsageException(Exception): pass
 
 def _parse_command_line():
-  import getopt, sys, re
-  try:
-    opts, remaining_args = getopt.gnu_getopt(
-        sys.argv[1:], 'md:',
-        ['start=', 'end=', 'extensions=', 'exclude_paths=',
-         'include-extensionless', 'editor=', 'count', 'test'])
-  except getopt.error:
-    raise _UsageException()
-  opts = dict(opts)
+  import argparse, re, sys, textwrap
 
-  if '--test' in opts:
+  parser = argparse.ArgumentParser(
+          formatter_class=argparse.RawDescriptionHelpFormatter,
+          description=textwrap.dedent(r"""
+            codemod.py is a tool/library to assist you with large-scale codebase refactors
+            that can be partially automated but still require human oversight and
+            occassional intervention.
+
+            Example: Let's say you're deprecating your use of the <font> tag.  From the
+            command line, you might make progress by running:
+
+              codemod.py -m -d /home/jrosenstein/www --extensions php,html \
+                         '<font *color="?(.*?)"?>(.*?)</font>' \
+                         '<span style="color: \1;">\2</span>'
+
+            For each match of the regex, you'll be shown a colored diff, and asked if you
+            want to accept the change (the replacement of the <font> tag with a <span>
+            tag), reject it, or edit the line in question in your $EDITOR of choice.
+            """),
+          epilog=textwrap.dedent(r"""
+            You can also use codemod for transformations that are much more sophisticated
+            than regular expression substitution.  Rather than using the command line, you
+            write Python code that looks like:
+
+              import codemod
+              codemod.Query(...).run_interactive()
+
+            See the documentation for the Query class for details.
+
+            @author Justin Rosenstein
+            """)
+          )
+
+  parser.add_argument('-m', action='store_true',
+                      help='Have regex work over multiple lines (e.g. have dot match newlines). '
+                           'By default, codemod applies the regex one line at a time.')
+  parser.add_argument('-d', action='store', type=str,
+                      help='The path whose descendent files are to be explored. '
+                           'Defaults to current dir.')
+
+  parser.add_argument('--start', action='store', type=str,
+                      help='A path:line_number-formatted position somewhere in the hierarchy from which to being exploring, '
+                           'or a percentage (e.g. "--start 25%%") of the way through to start.'
+                           'Useful if you\'re divvying up the substitution task across multiple people.')
+  parser.add_argument('--end', action='store', type=str,
+                      help='A path:line_number-formatted position somewhere in the hierarchy just *before* which we should stop exploring, '
+                           'or a percentage of the way through, just before which to end.')
+
+  parser.add_argument('--extensions', action='store', type=str,
+                      help='A comma-delimited list of file extensions to process.')
+  parser.add_argument('--include-extensionless', action='store_true',
+                      help='If set, this will check files without an extension, along with any matching file extensions passed in --extensions')
+  parser.add_argument('--exclude-paths', action='store', type=str,
+                      help='A comma-delimited list of paths to exclude.')
+
+  parser.add_argument('--editor', action='store', type=str,
+                      help='Specify an editor, e.g. "vim" or emacs". '
+                            'If omitted, defaults to $EDITOR environment variable.')
+  parser.add_argument('--count', action='store_true',
+                      help='Don\'t run normally.  Instead, just print out number of times places in the codebase where the \'query\' matches.')
+  parser.add_argument('--test', action='store_true',
+                      help='Don\'t run normally.  Instead, just run the unit tests embedded in the codemod library.')
+
+  parser.add_argument('match', nargs='?', action='store', type=str,
+                      help='Regular expression to match.')
+  parser.add_argument('subst', nargs='?', action='store', type=str,
+                      help='Substitution to replace with.')
+
+  arguments = parser.parse_args()
+
+  if arguments.test:
     import doctest
     doctest.testmod()
     sys.exit(0)
 
   query_options = {}
-  if len(remaining_args) in [1, 2]:
-    query_options['suggestor'] = (
-     (multiline_regex_suggestor if '-m' in opts else regex_suggestor)
-     (*remaining_args)  # remaining_args is [regex] or [regex, substitution].
-    )
-  else:
-    raise _UsageException()
-  if '--start' in opts:
-    query_options['start'] = opts['--start']
-  if '--end' in opts:
-    query_options['end'] = opts['--end']
-  if '-d' in opts:
-    query_options['root_directory'] = opts['-d']
-  if '--extensions' in opts or '--exclude_paths' in opts:
+
+  if arguments.match is not None:
+    query_options['suggestor'] = (multiline_regex_suggestor if arguments.m else regex_suggestor
+            )(arguments.match, arguments.subst)
+
+  if arguments.start is not None:
+    query_options['start'] = arguments.start
+  if arguments.end is not None:
+    query_options['end'] = arguments.end
+  if arguments.d is not None:
+    query_options['root_directory'] = arguments.d
+  if arguments.extensions is not None or arguments.exclude_paths is not None:
     query_options['path_filter'] = (
-        path_filter(extensions=opts['--extensions'].split(',') \
-                    if '--extensions' in opts else None,
-                    exclude_paths=opts.get('--exclude_paths').split(',') \
-                    if '--exclude_paths' in opts else None))
+        path_filter(extensions=arguments.extensions.split(',') \
+                    if arguments.extensions is not None else None,
+                    exclude_paths=arguments.exclude_paths.split(',') \
+                    if arguments.exclude_paths is not None else None))
 
   options = {}
   options['query'] = Query(**query_options)
-  if '--editor' in opts:
-    options['editor'] = opts['--editor']
-  if '--count' in opts:
-    options['just_count'] = True
+  if arguments.editor is not None:
+    options['editor'] = arguments.editor
+  options['just_count'] = arguments.count
 
   return options
 
