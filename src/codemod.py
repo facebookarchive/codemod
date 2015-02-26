@@ -737,23 +737,9 @@ def _terminal_restore_color():
   import curses, sys
   sys.stdout.write(curses.tigetstr('sgr0'))
 
-def print_through_less(text):
-  """
-  Prints `text` to standard output.  If `text` wouldn't fit on one screen (as
-  measured by line count), make output scrollable a la `less`.
-  """
-  from tempfile import NamedTemporaryFile
-  tempfile = NamedTemporaryFile()
-  tempfile.write(text)
-  tempfile.flush()
-  os.system('less --no-init --quit-if-one-screen %s' % tempfile.name)
-
-
 #
 # Code to make this run as an executable from the command line.
 #
-
-class _UsageException(Exception): pass
 
 def _parse_command_line():
   import argparse, re, sys, textwrap
@@ -834,16 +820,13 @@ def _parse_command_line():
 
   query_options = {}
 
-  if arguments.match is not None:
-    query_options['suggestor'] = (multiline_regex_suggestor if arguments.m else regex_suggestor
-            )(arguments.match, arguments.subst)
+  query_options['suggestor'] = (multiline_regex_suggestor if arguments.m else regex_suggestor
+          )(arguments.match, arguments.subst)
 
-  if arguments.start is not None:
-    query_options['start'] = arguments.start
-  if arguments.end is not None:
-    query_options['end'] = arguments.end
-  if arguments.d is not None:
-    query_options['root_directory'] = arguments.d
+  query_options['start'] = arguments.start
+  query_options['end'] = arguments.end
+  query_options['root_directory'] = arguments.d
+
   if arguments.extensions is not None or arguments.exclude_paths is not None:
     query_options['path_filter'] = (
         path_filter(extensions=arguments.extensions.split(',') \
@@ -860,9 +843,5 @@ def _parse_command_line():
   return options
 
 if __name__ == '__main__':
-  try:
-    options = _parse_command_line()
-  except _UsageException:
-    print_through_less(__doc__.strip())
-    sys.exit(2)
+  options = _parse_command_line()
   run_interactive(**options)
