@@ -19,7 +19,8 @@
 # @author Justin Rosenstein
 
 
-import sys, os
+import argparse, os, re, sys, textwrap
+
 def is_extensionless(path):
   """
   Returns True if path has no extension.
@@ -742,8 +743,6 @@ def _terminal_restore_color():
 #
 
 def _parse_command_line():
-  import argparse, re, sys, textwrap
-
   parser = argparse.ArgumentParser(
           formatter_class=argparse.RawDescriptionHelpFormatter,
           description=textwrap.dedent(r"""
