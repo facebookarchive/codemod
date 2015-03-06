@@ -743,6 +743,8 @@ def _terminal_restore_color():
 #
 
 def _parse_command_line():
+  global yes_to_all
+
   parser = argparse.ArgumentParser(
           formatter_class=argparse.RawDescriptionHelpFormatter,
           description=textwrap.dedent(r"""
@@ -797,6 +799,9 @@ def _parse_command_line():
   parser.add_argument('--exclude-paths', action='store', type=str,
                       help='A comma-delimited list of paths to exclude.')
 
+  parser.add_argument('--accept-all', action='store_true',
+                      help='Automatically accept all changes (use with caution).')
+
   parser.add_argument('--editor', action='store', type=str,
                       help='Specify an editor, e.g. "vim" or emacs". '
                             'If omitted, defaults to $EDITOR environment variable.')
@@ -816,6 +821,8 @@ def _parse_command_line():
     import doctest
     doctest.testmod()
     sys.exit(0)
+
+  yes_to_all = arguments.accept_all
 
   query_options = {}
 
