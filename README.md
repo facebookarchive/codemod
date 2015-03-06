@@ -47,6 +47,8 @@ Options (all optional) include:
     --include-extensionless
       If set, this will check files without an extension, along with any
       matching file extensions passed in --extensions
+    --accept-all
+      Automatically accept all changes (use with caution)
     --editor
       Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
       environment variable.
