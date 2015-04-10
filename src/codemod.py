@@ -822,6 +822,10 @@ def _parse_command_line():
     doctest.testmod()
     sys.exit(0)
 
+  if (arguments.extensions == None) and (arguments.include_extensionless == False):
+    parser.print_usage()
+    sys.exit(0)
+
   yes_to_all = arguments.accept_all
 
   query_options = {}
