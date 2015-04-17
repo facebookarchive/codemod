@@ -780,7 +780,7 @@ def _parse_command_line():
   parser.add_argument('-m', action='store_true',
                       help='Have regex work over multiple lines (e.g. have dot match newlines). '
                            'By default, codemod applies the regex one line at a time.')
-  parser.add_argument('-d', action='store', type=str,
+  parser.add_argument('-d', action='store', type=str, default='.',
                       help='The path whose descendent files are to be explored. '
                            'Defaults to current dir.')
 
