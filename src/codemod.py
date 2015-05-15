@@ -165,10 +165,13 @@ def line_transformation_suggestor(line_transformation, line_filter=None):
         yield Patch(line_number, new_lines=[candidate])
   return suggestor
 
-def regex_suggestor(regex, substitution=None, line_filter=None):
+def regex_suggestor(regex, substitution=None, ignore_case=False, line_filter=None):
   if isinstance(regex, str):
     import re
-    regex = re.compile(regex)
+    if ignore_case is False:
+      regex = re.compile(regex)
+    else:
+      regex = re.compile(regex, re.IGNORECASE)
 
   if substitution is None:
     line_transformation = lambda line: None if regex.search(line) else line
@@ -176,7 +179,7 @@ def regex_suggestor(regex, substitution=None, line_filter=None):
     line_transformation = lambda line: regex.sub(substitution, line)
   return line_transformation_suggestor(line_transformation, line_filter)
 
-def multiline_regex_suggestor(regex, substitution=None):
+def multiline_regex_suggestor(regex, substitution=None, ignore_case=False):
   """
   Return a suggestor function which, given a list of lines, generates patches
   to substitute matches of the given regex with (if provided) the given
@@ -190,7 +193,10 @@ def multiline_regex_suggestor(regex, substitution=None):
   """
   import re
   if isinstance(regex, str):
-    regex = re.compile(regex, re.DOTALL)
+    if ignore_case is False:
+      regex = re.compile(regex, re.DOTALL)
+    else:
+      regex = re.compile(regex, re.DOTALL | re.IGNORECASE)
 
   if isinstance(substitution, str):
     substitution_func = lambda match: match.expand(substitution)
@@ -783,6 +789,8 @@ def _parse_command_line():
   parser.add_argument('-d', action='store', type=str, default='.',
                       help='The path whose descendent files are to be explored. '
                            'Defaults to current dir.')
+  parser.add_argument('-i', action='store_true',
+                      help='Perform case-insensitive search.')
 
   parser.add_argument('--start', action='store', type=str,
                       help='A path:line_number-formatted position somewhere in the hierarchy from which to being exploring, '
@@ -831,7 +839,7 @@ def _parse_command_line():
   query_options = {}
 
   query_options['suggestor'] = (multiline_regex_suggestor if arguments.m else regex_suggestor
-          )(arguments.match, arguments.subst)
+          )(arguments.match, arguments.subst, arguments.i)
 
   query_options['start'] = arguments.start
   query_options['end'] = arguments.end
