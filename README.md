@@ -49,6 +49,8 @@ Options (all optional) include:
       matching file extensions passed in --extensions
     --accept-all
       Automatically accept all changes (use with caution)
+    --default-no
+      Set default behavior to reject the change.
     --editor
       Specify an editor, e.g. "vim" or "emacs".  If omitted, defaults to $EDITOR
       environment variable.

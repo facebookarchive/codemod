@@ -92,7 +92,7 @@ _default_path_filter = path_filter(
   extensions=['php', 'phpt', 'js', 'css', 'rb', 'erb']
 )
 
-def run_interactive(query, editor=None, just_count=False):
+def run_interactive(query, editor=None, just_count=False, default_no=False):
   """
   Asks the user about each patch suggested by the result of the query.
 
@@ -128,7 +128,7 @@ def run_interactive(query, editor=None, just_count=False):
 
   for patch in suggestions:
     _save_bookmark(patch.start_position)
-    _ask_about_patch(patch, editor)
+    _ask_about_patch(patch, editor, default_no)
     print 'Searching...'
   _delete_bookmark()
   if yes_to_all:
@@ -567,8 +567,9 @@ def print_patch(patch, lines_to_print, file_lines=None):
     print_file_line(i)
 
 yes_to_all = False
-def _ask_about_patch(patch, editor):
+def _ask_about_patch(patch, editor, default_no):
   global yes_to_all
+  default_action = 'n' if default_no else 'y'
   terminal_clear()
   terminal_print('%s\n' % patch.render_range(), color='WHITE')
   print
@@ -580,9 +581,13 @@ def _ask_about_patch(patch, editor):
 
   if patch.new_lines is not None:
     if not yes_to_all:
-      print 'Accept change (y = yes [default], n = no, e = edit, \
-A = yes to all, E = yes+edit)? ',
-      p = _prompt('yneEA', default='y')
+      if default_no:
+        print ('Accept change (y = yes, n = no [default], e = edit, ' +
+               'A = yes to all, E = yes+edit)? '),
+      else:
+        print ('Accept change (y = yes [default], n = no, e = edit, ' +
+               'A = yes to all, E = yes+edit)? '),
+      p = _prompt('yneEA', default=default_action)
     else:
       p = 'y'
   else:
@@ -810,6 +815,9 @@ def _parse_command_line():
   parser.add_argument('--accept-all', action='store_true',
                       help='Automatically accept all changes (use with caution).')
 
+  parser.add_argument('--default-no', action='store_true',
+                      help='If set, this will make the default option to not accept the change.')
+
   parser.add_argument('--editor', action='store', type=str,
                       help='Specify an editor, e.g. "vim" or emacs". '
                             'If omitted, defaults to $EDITOR environment variable.')
@@ -857,6 +865,7 @@ def _parse_command_line():
   if arguments.editor is not None:
     options['editor'] = arguments.editor
   options['just_count'] = arguments.count
+  options['default_no'] = arguments.default_no
 
   return options
 
