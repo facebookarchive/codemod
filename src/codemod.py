@@ -37,10 +37,7 @@ def is_extensionless(path):
   True
   """
   _, ext = os.path.splitext(path)
-  if ext == '':
-    return True
-  else:
-    return False
+  return ext == ''
 
 def matches_extension(path, extension):
   """
