@@ -973,6 +973,7 @@ def _parse_command_line():
     query_options['start'] = arguments.start
     query_options['end'] = arguments.end
     query_options['root_directory'] = arguments.d
+    query_options['inc_extensionless'] = arguments.include_extensionless
 
     if arguments.extensions is not None or arguments.exclude_paths is not None:
         query_options['path_filter'] = (
