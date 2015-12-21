@@ -69,7 +69,7 @@ def matches_extension(path, extension):
         return ext[1:] == extension
 
 
-def path_filter(extensions=None, exclude_paths=[]):
+def path_filter(extensions=None, exclude_paths=None):
     """
     Returns a function (useful as the path_filter field of a Query instance)
     that returns True iff the path it is given has an extension one of the
@@ -85,6 +85,8 @@ def path_filter(extensions=None, exclude_paths=[]):
     ...     ['./a.js', './BUILD', './profile.php'])
     [True, True, False]
     """
+    exclude_paths = exclude_paths or []
+
     def the_filter(path):
         if extensions:
             if not any(
@@ -118,7 +120,7 @@ def run_interactive(query, editor=None, just_count=False, default_no=False):
                         places in the codebase where the query matches.
     """
 
-    global yes_to_all
+    global yes_to_all  # noqa
 
     # Load start from bookmark, if appropriate.
     bookmark = _load_bookmark()
@@ -212,7 +214,6 @@ def multiline_regex_suggestor(regex, substitution=None, ignore_case=False):
                          \1 notation to backreference match groups) or a
                          function (that takes a match object as input).
     """
-    import re
     if isinstance(regex, str):
         if ignore_case is False:
             regex = re.compile(regex, re.DOTALL)
@@ -276,7 +277,7 @@ def _index_to_row_col(lines, index):
     raise IndexError('index %d out of range' % index)
 
 
-class Query:
+class Query(object):
     """
     Represents a suggestor, along with a set of constraints on which files
     should be fed to that suggestor.
@@ -397,10 +398,12 @@ class Query:
 
         path_list = Query._walk_directory(self.root_directory)
         path_list = Query._sublist(path_list, start_pos.path, end_pos.path)
-        path_list = (path for path in path_list if
-                     Query._path_looks_like_code(path)
-                     and (self.path_filter(path))
-                     or (self.inc_extensionless and is_extensionless(path)))
+        path_list = (
+            path for path in path_list if
+            Query._path_looks_like_code(path) and
+            (self.path_filter(path)) or
+            (self.inc_extensionless and is_extensionless(path))
+        )
         for path in path_list:
             try:
                 lines = list(open(path))
@@ -436,20 +439,20 @@ class Query:
         """
 
         paths = [os.path.join(root, name)
-                 for root, dirs, files in os.walk(root_directory)
+                 for root, dirs, files in os.walk(root_directory)  # noqa
                  for name in files]
         paths.sort()
         return paths
 
     @staticmethod
-    def _sublist(list, starting_value, ending_value=None):
+    def _sublist(items, starting_value, ending_value=None):
         """
         >>> list(Query._sublist((x*x for x in xrange(1, 100)), 16, 64))
         [16, 25, 36, 49, 64]
         """
         have_started = starting_value is None
 
-        for x in list:
+        for x in items:
             have_started = have_started or x == starting_value
             if have_started:
                 yield x
@@ -469,12 +472,15 @@ class Query:
         >>> Query._path_looks_like_code('/home/jrosenstein/www/.git/HEAD')
         False
         """
-        return ('/.' not in path and path[-1] != '~'
-                and not path.endswith('tags')
-                and not path.endswith('TAGS'))
+        return (
+            '/.' not in path and
+            path[-1] != '~' and
+            not path.endswith('tags') and
+            not path.endswith('TAGS')
+        )
 
 
-class Position:
+class Position(object):
     """
     >>> p1, p2 = Position('./hi.php', 20), Position('./hi.php:20')
     >>> p1.path == p2.path and p1.line_number == p2.line_number
@@ -520,7 +526,7 @@ class Position:
         return '%s:%d' % (self.path, self.line_number)
 
 
-class Patch:
+class Patch(object):
     """
     Represents a range of a file and (optionally) a list of lines with which to
     replace that range.
@@ -537,7 +543,7 @@ class Patch:
     """
 
     def __init__(self, start_line_number, end_line_number=None, new_lines=None,
-                 path=None):
+                 path=None):  # noqa
         """
         Constructs a Patch object.
 
@@ -559,12 +565,15 @@ class Patch:
                                 path explicitly.
                                 (It'll get set by the suggestor's caller.)
         """
-        if end_line_number is None:
-            end_line_number = start_line_number + 1
-        if isinstance(new_lines, str):
-            new_lines = new_lines.splitlines(True)
-        for k, v in locals().iteritems():
-            setattr(self, k, v)
+        self.path = path
+        self.start_line_number = start_line_number
+        self.end_line_number = end_line_number
+        self.new_lines = new_lines
+
+        if self.end_line_number is None:
+            self.end_line_number = self.start_line_number + 1
+        if isinstance(self.new_lines, str):
+            self.new_lines = self.new_lines.splitlines(True)
 
     def __repr__(self):
         return 'Patch()' % ', '.join(map(repr, [
@@ -607,7 +616,8 @@ def print_patch(patch, lines_to_print, file_lines=None):
     start_context_line_number = patch.start_line_number - size_of_up_context
     end_context_line_number = patch.end_line_number + size_of_down_context
 
-    def print_file_line(line_number):
+    def print_file_line(line_number):  # noqa
+        # Why line_number is passed here?
         print ('  %s' % file_lines[i]) if (
             0 <= i < len(file_lines)) else '~\n',
 
@@ -673,12 +683,12 @@ def _prompt(letters='yn', default=None):
     """
     while True:
         try:
-            input = sys.stdin.readline().strip()
+            input_text = sys.stdin.readline().strip()
         except KeyboardInterrupt:
             sys.exit(0)
-        if input and input in letters:
-            return input
-        if default is not None and input == '':
+        if input_text and input_text in letters:
+            return input_text
+        if default is not None and input_text == '':
             return default
         print 'Come again?'
 
@@ -709,11 +719,11 @@ def _save_bookmark(position):
 
 def _load_bookmark():
     try:
-        file = open('.codemod.bookmark')
+        bookmark_file = open('.codemod.bookmark')
     except IOError:
         return None
-    contents = file.readline().strip()
-    file.close()
+    contents = bookmark_file.readline().strip()
+    bookmark_file.close()
     return Position(contents)
 
 
@@ -743,7 +753,7 @@ def terminal_get_size(default_size=(25, 80)):
             return struct.unpack(
                 'hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234')
             )
-        except:
+        except Exception:
             return None
 
     # try open fds
@@ -754,13 +764,13 @@ def terminal_get_size(default_size=(25, 80)):
             fd = os.open(os.ctermid(), os.O_RDONLY)
             size = ioctl_gwinsz(fd)
             os.close(fd)
-        except:
+        except Exception:
             pass
     if not size:
         # env vars or finally defaults
         try:
             size = (os.environ.get('LINES'), os.environ.get('COLUMNS'))
-        except:
+        except Exception:
             return default_size
 
     return map(int, size)
@@ -789,7 +799,6 @@ def _terminal_use_capability(capability_name):
     it was output.
     """
     import curses
-    import sys
     curses.setupterm()
     capability = curses.tigetstr(capability_name)
     if capability:
@@ -806,7 +815,6 @@ def terminal_print(text, color):
 
 def _terminal_set_color(color):
     import curses
-    import sys
 
     def color_code(set_capability, possible_colors):
         try:
@@ -818,8 +826,11 @@ def _terminal_set_color(color):
             return None
         return curses.tparm(set_code, color_index)
     code = (
-        color_code('setaf', 'BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE')
-        or color_code('setf', 'BLACK BLUE GREEN CYAN RED MAGENTA YELLOW WHITE')
+        color_code(
+            'setaf', 'BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE'
+        ) or color_code(
+            'setf', 'BLACK BLUE GREEN CYAN RED MAGENTA YELLOW WHITE'
+        )
     )
     if code:
         sys.stdout.write(code)
@@ -827,7 +838,6 @@ def _terminal_set_color(color):
 
 def _terminal_restore_color():
     import curses
-    import sys
     sys.stdout.write(curses.tigetstr('sgr0'))
 
 #
