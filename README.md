@@ -1,8 +1,11 @@
 codemod
 =======
 
-[![Build
-Status](https://travis-ci.org/facebook/codemod.svg?branch=master)](https://travis-ci.org/facebook/codemod)
+[![PyPI](https://img.shields.io/pypi/v/codemod.svg)](https://pypi.python.org/pypi/codemod)
+[![downloads](https://img.shields.io/pypi/dw/codemod.svg)](https://pypi.python.org/pypi/codemod)
+[![Travis CI](http://img.shields.io/travis/facebook/codemod.svg)](https://travis-ci.org/facebook/codemod)
+[![Code Health](https://landscape.io/github/facebook/codemod/master/landscape.svg?style=flat)](https://landscape.io/github/facebook/codemod/master)
+
 
 Overview
 --------
