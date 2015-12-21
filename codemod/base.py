@@ -940,10 +940,6 @@ def _parse_command_line():
                         help='Don\'t run normally.  Instead, just print '
                              'out number of times places in the codebase '
                              'where the \'query\' matches.')
-    parser.add_argument('--test', action='store_true',
-                        help='Don\'t run normally.  Instead, just run '
-                             'the unit tests embedded in the codemod library.')
-
     parser.add_argument('match', nargs='?', action='store', type=str,
                         help='Regular expression to match.')
     parser.add_argument('subst', nargs='?', action='store', type=str,
@@ -951,13 +947,8 @@ def _parse_command_line():
 
     arguments = parser.parse_args()
 
-    if arguments.test:
-        import doctest
-        doctest.testmod()
-        sys.exit(0)
-
     if (
-            arguments.extensions is None
+        arguments.extensions is None
     ) and (arguments.include_extensionless is False):
         parser.print_usage()
         sys.exit(0)
