@@ -1,17 +1,20 @@
 codemod
 =======
 
-[![Build
-Status](https://travis-ci.org/facebook/codemod.svg?branch=master)](https://travis-ci.org/facebook/codemod)
+[![PyPI](https://img.shields.io/pypi/v/codemod.svg)](https://pypi.python.org/pypi/codemod)
+[![downloads](https://img.shields.io/pypi/dw/codemod.svg)](https://pypi.python.org/pypi/codemod)
+[![Travis CI](http://img.shields.io/travis/facebook/codemod.svg)](https://travis-ci.org/facebook/codemod)
+[![Code Health](https://landscape.io/github/rochacbruno/codemod/master/landscape.svg?style=flat)](https://landscape.io/github/rochacbruno/codemod/master)
+
 
 Overview
 --------
 
-codemod.py is a tool/library to assist you with large-scale codebase refactors that can be partially automated but still require human oversight and occassional intervention.
+codemod is a tool/library to assist you with large-scale codebase refactors that can be partially automated but still require human oversight and occassional intervention.
 
 Example: Let's say you're deprecating your use of the `<font>` tag.  From the command line, you might make progress by running:
 
-    codemod.py -m -d /home/jrosenstein/www --extensions php,html \
+    codemod -m -d /home/jrosenstein/www --extensions php,html \
         '<font *color="?(.*?)"?>(.*?)</font>' \
         '<span style="color: \1;">\2</span>'
 
@@ -19,7 +22,7 @@ For each match of the regex, you'll be shown a colored diff, and asked if you wa
 
 Install
 -------
-`pip install git+https://github.com/facebook/codemod.git`
+`pip install codemod`
 
 Usage
 -----
