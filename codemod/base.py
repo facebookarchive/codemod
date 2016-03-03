@@ -71,11 +71,20 @@ def matches_extension(path, extension):
         return fnmatch.fnmatch(ext[1:], extension)
 
 
-def path_filter(extensions=None, exclude_paths=None):
+def path_filter(extensions, exclude_paths=None):
     """
-    Returns a function (useful as the path_filter field of a Query instance)
-    that returns True iff the path it is given has an extension one of the
-    file extensions specified in `extensions`, an array of strings.
+    Returns a function that returns True if a filepath is acceptable.
+
+    @param extensions     An array of strings. Specifies what file
+                          extensions should be accepted by the
+                          filter. If None, we default to the Unix glob
+                          `*` and match every file extension.
+    @param exclude_paths  An array of strings which represents filepaths
+                          that should never be accepted by the filter.
+
+    @return function      A filter function that will only return True
+                          when a filepath is acceptable under the above
+                          conditions.
 
     >>> map(path_filter(extensions=['js', 'php']),
     ...     ['./profile.php', './q.jjs'])
@@ -90,11 +99,9 @@ def path_filter(extensions=None, exclude_paths=None):
     exclude_paths = exclude_paths or []
 
     def the_filter(path):
-        if extensions:
-            if not any(
-                matches_extension(path, extension) for extension in extensions
-            ):
-                return False
+        if not any(matches_extension(path, extension)
+                   for extension in extensions):
+            return False
         if exclude_paths:
             for excluded in exclude_paths:
                 if path.startswith(
@@ -922,7 +929,7 @@ def _parse_command_line():
     parser.add_argument('--extensions', action='store',
                         default='*', type=str,
                         help='A comma-delimited list of file extensions '
-                             'to process. You may also use Unix pattern '
+                             'to process. Also supports Unix pattern '
                              'matching.')
     parser.add_argument('--include-extensionless', action='store_true',
                         help='If set, this will check files without '
