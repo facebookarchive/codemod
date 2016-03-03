@@ -89,7 +89,8 @@ def path_filter(extensions, exclude_paths=None):
     >>> map(path_filter(extensions=['js', 'php']),
     ...     ['./profile.php', './q.jjs'])
     [True, False]
-    >>> map(path_filter(exclude_paths=['html']),
+    >>> map(path_filter(extensions=['*'],
+    ...                 exclude_paths=['html']),
     ...     ['./html/x.php', './lib/y.js'])
     [False, True]
     >>> map(path_filter(extensions=['js', 'BUILD']),
