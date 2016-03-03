@@ -20,6 +20,7 @@
 
 
 import argparse
+import fnmatch
 import os
 import re
 import sys
@@ -49,7 +50,8 @@ def is_extensionless(path):
 def matches_extension(path, extension):
     """
     Returns True if path has the given extension, or if
-    the last path component matches the extension.
+    the last path component matches the extension. Supports
+    Unix glob matching.
 
     >>> matches_extension("./www/profile.php", "php")
     True
@@ -66,7 +68,7 @@ def matches_extension(path, extension):
     else:
         # If the is an extension, drop the leading period and
         # compare it to the extension.
-        return ext[1:] == extension
+        return fnmatch.fnmatch(ext[1:], extension)
 
 
 def path_filter(extensions=None, exclude_paths=None):
@@ -917,9 +919,11 @@ def _parse_command_line():
                              'or a percentage of the way through, '
                              'just before which to end.')
 
-    parser.add_argument('--extensions', action='store', type=str,
+    parser.add_argument('--extensions', action='store',
+                        default='*', type=str,
                         help='A comma-delimited list of file extensions '
-                             'to process.')
+                             'to process. You may also use Unix pattern '
+                             'matching.')
     parser.add_argument('--include-extensionless', action='store_true',
                         help='If set, this will check files without '
                         'an extension, along with any matching file '
@@ -950,12 +954,6 @@ def _parse_command_line():
 
     arguments = parser.parse_args()
 
-    if (
-        arguments.extensions is None
-    ) and (arguments.include_extensionless is False):
-        parser.print_usage()
-        sys.exit(0)
-
     yes_to_all = arguments.accept_all
 
     query_options = {}
@@ -969,12 +967,12 @@ def _parse_command_line():
     query_options['root_directory'] = arguments.d
     query_options['inc_extensionless'] = arguments.include_extensionless
 
-    if arguments.extensions is not None or arguments.exclude_paths is not None:
-        query_options['path_filter'] = (
-            path_filter(extensions=arguments.extensions.split(',')
-                        if arguments.extensions is not None else None,
-                        exclude_paths=arguments.exclude_paths.split(',')
-                        if arguments.exclude_paths is not None else None))
+    if arguments.exclude_paths is not None:
+        exclude_paths = arguments.exclude_paths.split(',')
+    else:
+        exclude_paths = None
+    query_options['path_filter'] = path_filter(arguments.extensions.split(','),
+                                               exclude_paths)
 
     options = {}
     options['query'] = Query(**query_options)
