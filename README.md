@@ -48,7 +48,8 @@ Options (all optional) include:
       *before* which we should stop exploring, or a percentage of the way
       through, just before which to end.
     --extensions
-      A comma-delimited list of file extensions to process.
+      A comma-delimited list of file extensions to process. Also supports Unix
+      pattern matching.
     --include-extensionless
       If set, this will check files without an extension, along with any
       matching file extensions passed in --extensions
