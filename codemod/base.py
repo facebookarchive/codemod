@@ -196,9 +196,11 @@ def regex_suggestor(regex, substitution=None, ignore_case=False,
             regex = re.compile(regex, re.IGNORECASE)
 
     if substitution is None:
-        line_transformation = lambda line: None if regex.search(line) else line
+        def line_transformation(line):
+            return None if regex.search(line) else line
     else:
-        line_transformation = lambda line: regex.sub(substitution, line)
+        def line_transformation(line):
+            return regex.sub(substitution, line)
     return line_transformation_suggestor(line_transformation, line_filter)
 
 
@@ -221,7 +223,8 @@ def multiline_regex_suggestor(regex, substitution=None, ignore_case=False):
             regex = re.compile(regex, re.DOTALL | re.IGNORECASE)
 
     if isinstance(substitution, str):
-        substitution_func = lambda match: match.expand(substitution)
+        def substitution_func(match):
+            return match.expand(substitution)
     else:
         substitution_func = substitution
 
