@@ -22,7 +22,13 @@ For each match of the regex, you'll be shown a colored diff, and asked if you wa
 
 Install
 -------
+In a virtual environment or as admin user
+
 `pip install codemod`
+
+or system wide with sudo
+
+`sudo -H pip install codemod`
 
 Usage
 -----
