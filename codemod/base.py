@@ -965,6 +965,8 @@ def _parse_command_line():
                         help='Substitution to replace with.')
 
     arguments = parser.parse_args()
+    if not arguments.match:
+        parser.exit(0, parser.format_usage())
 
     yes_to_all = arguments.accept_all
 
