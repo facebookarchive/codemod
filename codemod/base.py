@@ -81,7 +81,8 @@ def path_filter(extensions, exclude_paths=None):
                           filter. If None, we default to the Unix glob
                           `*` and match every file extension.
     @param exclude_paths  An array of strings which represents filepaths
-                          that should never be accepted by the filter.
+                          that should never be accepted by the filter. Unix
+                          shell-style wildcards are supported.
 
     @return function      A filter function that will only return True
                           when a filepath is acceptable under the above
@@ -97,6 +98,10 @@ def path_filter(extensions, exclude_paths=None):
     >>> list(map(path_filter(extensions=['js', 'BUILD']),
     ...     ['./a.js', './BUILD', './profile.php']))
     [True, True, False]
+    >>> list(map(path_filter(extensions=['js'],
+    ...     exclude_paths=['*/node_modules/*']),
+    ...     ['./a.js', './tools/node_modules/dep.js']))
+    [True, False]
     """
     exclude_paths = exclude_paths or []
 
@@ -106,9 +111,9 @@ def path_filter(extensions, exclude_paths=None):
             return False
         if exclude_paths:
             for excluded in exclude_paths:
-                if path.startswith(
-                    excluded
-                ) or path.startswith('./' + excluded):
+                if (path.startswith(excluded) or
+                        path.startswith('./' + excluded) or
+                        fnmatch.fnmatch(path, excluded)):
                     return False
         return True
     return the_filter
