@@ -368,9 +368,17 @@ class Query(object):
         return self._get_position('_start')
     start_position = property(get_start_position)
 
+    @start_position.setter
+    def start_position(self, value):
+        self._start = value
+
     def get_end_position(self):
         return self._get_position('_end')
     end_position = property(get_end_position)
+
+    @end_position.setter
+    def end_position(self, value):
+        self._end = value
 
     def get_all_patches(self, dont_use_cache=False):
         """
