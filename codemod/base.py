@@ -646,7 +646,7 @@ def print_patch(patch, lines_to_print, file_lines=None):
 
     def print_file_line(line_number):  # noqa
         # Why line_number is passed here?
-        print('  %s' % file_lines[i]) if (
+        print('  %s' % file_lines[i], end='') if (
             0 <= i < len(file_lines)) else '~\n',
 
     for i in range(start_context_line_number, patch.start_line_number):
@@ -839,7 +839,7 @@ def _terminal_use_capability(capability_name):
 def terminal_print(text, color):
     """Print text in the specified color, without a terminating newline."""
     _terminal_set_color(color)
-    print(text, end=" ")
+    print(text, end='')
     _terminal_restore_color()
 
 
