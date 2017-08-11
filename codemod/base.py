@@ -31,6 +31,7 @@ from math import ceil
 if sys.version_info[0] >= 3:
     unicode = str
 
+
 def is_extensionless(path):
     """
     Returns True if path has no extension.
@@ -119,6 +120,7 @@ def path_filter(extensions, exclude_paths=None):
                     return False
         return True
     return the_filter
+
 
 _default_path_filter = path_filter(
     extensions=['php', 'phpt', 'js', 'css', 'rb', 'erb']
@@ -665,6 +667,7 @@ def print_patch(patch, lines_to_print, file_lines=None):
     for i in range(patch.end_line_number, end_context_line_number):
         print_file_line(i)
 
+
 yes_to_all = False
 
 
@@ -1020,6 +1023,7 @@ def _parse_command_line():
 def main():
     options = _parse_command_line()
     run_interactive(**options)
+
 
 if __name__ == '__main__':
     main()
