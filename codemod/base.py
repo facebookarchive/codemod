@@ -28,6 +28,9 @@ import sys
 import textwrap
 from math import ceil
 
+if sys.version_info[0] >= 3:
+    unicode = str
+
 
 def is_extensionless(path):
     """
@@ -118,6 +121,7 @@ def path_filter(extensions, exclude_paths=None):
         return True
     return the_filter
 
+
 _default_path_filter = path_filter(
     extensions=['php', 'phpt', 'js', 'css', 'rb', 'erb']
 )
@@ -143,6 +147,7 @@ def run_interactive(query, editor=None, just_count=False, default_no=False):
     if bookmark:
         print('Resume where you left off, at %s (y/n)? '
               % str(bookmark), end=' ')
+        sys.stdout.flush()
         if (_prompt(default='y') == 'y'):
             query.start_position = bookmark
 
@@ -662,6 +667,7 @@ def print_patch(patch, lines_to_print, file_lines=None):
     for i in range(patch.end_line_number, end_context_line_number):
         print_file_line(i)
 
+
 yes_to_all = False
 
 
@@ -670,10 +676,11 @@ def _ask_about_patch(patch, editor, default_no):
     default_action = 'n' if default_no else 'y'
     terminal_clear()
     terminal_print('%s\n' % patch.render_range(), color='WHITE')
-    print
+    print()
 
     lines = list(open(patch.path))
-    print_patch(patch, terminal_get_size()[0] - 20, lines)
+    size = list(terminal_get_size())
+    print_patch(patch, size[0] - 20, lines)
 
     print()
 
@@ -831,6 +838,7 @@ def _terminal_use_capability(capability_name):
     import curses
     curses.setupterm()
     capability = curses.tigetstr(capability_name)
+    capability = unicode(capability, 'ascii')
     if capability:
         sys.stdout.write(capability)
     return bool(capability)
@@ -863,12 +871,13 @@ def _terminal_set_color(color):
         )
     )
     if code:
+        code = unicode(code, 'ascii')
         sys.stdout.write(code)
 
 
 def _terminal_restore_color():
     import curses
-    sys.stdout.write(curses.tigetstr('sgr0'))
+    sys.stdout.write(unicode(curses.tigetstr('sgr0'), 'ascii'))
 
 #
 # Code to make this run as an executable from the command line.
@@ -1014,6 +1023,7 @@ def _parse_command_line():
 def main():
     options = _parse_command_line()
     run_interactive(**options)
+
 
 if __name__ == '__main__':
     main()
