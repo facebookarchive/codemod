@@ -21,110 +21,21 @@
 from __future__ import print_function
 
 import argparse
-import fnmatch
 import os
 import re
 import sys
 import textwrap
 from math import ceil
 
+from codemod.patch import Patch
+from codemod.position import Position
+from codemod.query import Query
+import codemod.helpers as helpers
+import codemod.terminal_helper as terminal
+
+yes_to_all = False
 if sys.version_info[0] >= 3:
     unicode = str
-
-
-def is_extensionless(path):
-    """
-    Returns True if path has no extension.
-
-    >>> is_extensionless("./www/test")
-    True
-    >>> is_extensionless("./www/.profile")
-    True
-    >>> is_extensionless("./www/.dir/README")
-    True
-    >>> is_extensionless("./scripts/menu.js")
-    False
-    >>> is_extensionless("./LICENSE")
-    True
-    """
-    _, ext = os.path.splitext(path)
-    return ext == ''
-
-
-def matches_extension(path, extension):
-    """
-    Returns True if path has the given extension, or if
-    the last path component matches the extension. Supports
-    Unix glob matching.
-
-    >>> matches_extension("./www/profile.php", "php")
-    True
-    >>> matches_extension("./scripts/menu.js", "html")
-    False
-    >>> matches_extension("./LICENSE", "LICENSE")
-    True
-    """
-    _, ext = os.path.splitext(path)
-    if ext == '':
-        # If there is no extension, grab the file name and
-        # compare it to the given extension.
-        return os.path.basename(path) == extension
-    else:
-        # If the is an extension, drop the leading period and
-        # compare it to the extension.
-        return fnmatch.fnmatch(ext[1:], extension)
-
-
-def path_filter(extensions, exclude_paths=None):
-    """
-    Returns a function that returns True if a filepath is acceptable.
-
-    @param extensions     An array of strings. Specifies what file
-                          extensions should be accepted by the
-                          filter. If None, we default to the Unix glob
-                          `*` and match every file extension.
-    @param exclude_paths  An array of strings which represents filepaths
-                          that should never be accepted by the filter. Unix
-                          shell-style wildcards are supported.
-
-    @return function      A filter function that will only return True
-                          when a filepath is acceptable under the above
-                          conditions.
-
-    >>> list(map(path_filter(extensions=['js', 'php']),
-    ...     ['./profile.php', './q.jjs']))
-    [True, False]
-    >>> list(map(path_filter(extensions=['*'],
-    ...                 exclude_paths=['html']),
-    ...     ['./html/x.php', './lib/y.js']))
-    [False, True]
-    >>> list(map(path_filter(extensions=['js', 'BUILD']),
-    ...     ['./a.js', './BUILD', './profile.php']))
-    [True, True, False]
-    >>> list(map(path_filter(extensions=['js'],
-    ...     exclude_paths=['*/node_modules/*']),
-    ...     ['./a.js', './tools/node_modules/dep.js']))
-    [True, False]
-    """
-    exclude_paths = exclude_paths or []
-
-    def the_filter(path):
-        if not any(matches_extension(path, extension)
-                   for extension in extensions):
-            return False
-        if exclude_paths:
-            for excluded in exclude_paths:
-                if (path.startswith(excluded) or
-                        path.startswith('./' + excluded) or
-                        fnmatch.fnmatch(path, excluded)):
-                    return False
-        return True
-    return the_filter
-
-
-_default_path_filter = path_filter(
-    extensions=['php', 'phpt', 'js', 'css', 'rb', 'erb']
-)
 
 
 def run_interactive(query, editor=None, just_count=False, default_no=False):
@@ -139,8 +50,7 @@ def run_interactive(query, editor=None, just_count=False, default_no=False):
     @param just_count   If true: don't run normally.  Just print out number of
                         places in the codebase where the query matches.
     """
-
-    global yes_to_all  # noqa
+    global yes_to_all
 
     # Load start from bookmark, if appropriate.
     bookmark = _load_bookmark()
@@ -158,7 +68,7 @@ def run_interactive(query, editor=None, just_count=False, default_no=False):
 
     if just_count:
         for count, _ in enumerate(suggestions):
-            terminal_move_to_beginning_of_line()
+            terminal.terminal_move_to_beginning_of_line()
             print(count, end=" ")
             sys.stdout.flush()  # since print statement ends in comma
         print()
@@ -170,7 +80,7 @@ def run_interactive(query, editor=None, just_count=False, default_no=False):
         print('Searching...')
     _delete_bookmark()
     if yes_to_all:
-        terminal_clear()
+        terminal.terminal_clear()
         print(
             "You MUST indicate in your code review:"
             " \"codemod with 'Yes to all'\"."
@@ -302,340 +212,6 @@ def _index_to_row_col(lines, index):
     raise IndexError('index %d out of range' % index)
 
 
-class Query(object):
-    """
-    Represents a suggestor, along with a set of constraints on which files
-    should be fed to that suggestor.
-
-    >>> Query(lambda x: None, start='profile.php:20').start_position
-    Position('profile.php', 20)
-    """
-
-    def __init__(self,
-                 suggestor,
-                 start=None,
-                 end=None,
-                 root_directory='.',
-                 path_filter=_default_path_filter,
-                 inc_extensionless=False):
-        """
-        @param suggestor            A function that takes a list of lines and
-                                    generates instances of Patch to suggest.
-                                    (Patches should not specify paths.)
-        @param start                One of:
-                                    - an instance of Position
-                                    (indicating the place in the file
-                                     hierarchy at which to resume),
-                                    - a path:line_number-formatted string
-                                      representing a position,
-                                    - a string formatted like "25%"
-                                    (indicating we should start 25% of
-                                     the way through the process), or
-                                    - None (indicating that we should
-                                            start at the beginning).
-        @param end                  An indicator of the position
-                                    just *before* which
-                                    to stop exploring, using one
-                                    of the same formats
-                                    used for start (where None  means
-                                    'traverse to the end of the hierarchy).
-        @param root_directory       The path whose ancestor files
-                                    are to be explored.
-        @param path_filter          Given a path, returns True or False.
-                                    If False,
-                                    the entire file is ignored.
-        @param inc_extensionless    If True, will include all files without an
-                                    extension when checking
-                                    against the path_filter
-        """
-        self.suggestor = suggestor
-        self._start = start
-        self._end = end
-        self.root_directory = root_directory
-        self.path_filter = path_filter
-        self.inc_extensionless = inc_extensionless
-        self._all_patches_cache = None
-
-    def clone(self):
-        import copy
-        return copy.copy(self)
-
-    def _get_position(self, attr_name):
-        attr_value = getattr(self, attr_name)
-        if attr_value is None:
-            return None
-        if isinstance(attr_value, str) and attr_value.endswith('%'):
-            attr_value = self.compute_percentile(int(attr_value[:-1]))
-            setattr(self, attr_name, attr_value)
-        return Position(attr_value)
-
-    def get_start_position(self):
-        return self._get_position('_start')
-    start_position = property(get_start_position)
-
-    @start_position.setter
-    def start_position(self, value):
-        self._start = value
-
-    def get_end_position(self):
-        return self._get_position('_end')
-    end_position = property(get_end_position)
-
-    @end_position.setter
-    def end_position(self, value):
-        self._end = value
-
-    def get_all_patches(self, dont_use_cache=False):
-        """
-        Computes a list of all patches matching this query, though ignoreing
-        self.start_position and self.end_position.
-
-        @param dont_use_cache   If False, and get_all_patches has been called
-                                before, compute the list computed last time.
-        """
-        if not dont_use_cache and self._all_patches_cache is not None:
-            return self._all_patches_cache
-
-        print(
-            'Computing full change list (since you specified a percentage)...'
-        ),
-        sys.stdout.flush()  # since print statement ends in comma
-
-        endless_query = self.clone()
-        endless_query.start_position = endless_query.end_position = None
-        self._all_patches_cache = list(endless_query.generate_patches())
-        return self._all_patches_cache
-
-    def compute_percentile(self, percentage):
-        """
-        Returns a Position object that represents percentage%-far-of-the-way
-        through the larger task, as specified by this query.
-
-        @param percentage    a number between 0 and 100.
-        """
-        all_patches = self.get_all_patches()
-        return all_patches[
-            int(len(all_patches) * percentage / 100)
-        ].start_position
-
-    def generate_patches(self):
-        """
-        Generates a list of patches for each file underneath
-        self.root_directory
-        that satisfy the given conditions given
-        query conditions, where patches for
-        each file are suggested by self.suggestor.
-        """
-        start_pos = self.start_position or Position(None, None)
-        end_pos = self.end_position or Position(None, None)
-
-        path_list = Query._walk_directory(self.root_directory)
-        path_list = Query._sublist(path_list, start_pos.path, end_pos.path)
-        path_list = (
-            path for path in path_list if
-            Query._path_looks_like_code(path) and
-            (self.path_filter(path)) or
-            (self.inc_extensionless and is_extensionless(path))
-        )
-        for path in path_list:
-            try:
-                lines = list(open(path))
-            except (IOError, UnicodeDecodeError):
-                # If we can't open the file--perhaps it's a symlink whose
-                # destination no loner exists--then short-circuit.
-                continue
-
-            for patch in self.suggestor(lines):
-                if path == start_pos.path:
-                    if patch.start_line_number < start_pos.line_number:
-                        continue  # suggestion is pre-start_pos
-                if path == end_pos.path:
-                    if patch.end_line_number >= end_pos.line_number:
-                        break  # suggestion is post-end_pos
-
-                old_lines = lines[
-                    patch.start_line_number:patch.end_line_number]
-                if patch.new_lines is None or patch.new_lines != old_lines:
-                    patch.path = path
-                    yield patch
-                    # re-open file, in case contents changed
-                    lines[:] = list(open(path))
-
-    def run_interactive(self, **kargs):
-        run_interactive(self, **kargs)
-
-    @staticmethod
-    def _walk_directory(root_directory):
-        """
-        Generates the paths of all files that are ancestors
-        of `root_directory`.
-        """
-
-        paths = [os.path.join(root, name)
-                 for root, dirs, files in os.walk(root_directory)  # noqa
-                 for name in files]
-        paths.sort()
-        return paths
-
-    @staticmethod
-    def _sublist(items, starting_value, ending_value=None):
-        """
-        >>> list(Query._sublist((x*x for x in range(1, 100)), 16, 64))
-        [16, 25, 36, 49, 64]
-        """
-        have_started = starting_value is None
-
-        for x in items:
-            have_started = have_started or x == starting_value
-            if have_started:
-                yield x
-
-            if ending_value is not None and x == ending_value:
-                break
-
-    @staticmethod
-    def _path_looks_like_code(path):
-        """
-        >>> Query._path_looks_like_code('/home/jrosenstein/www/profile.php')
-        True
-        >>> Query._path_looks_like_code('./tags')
-        False
-        >>> Query._path_looks_like_code('/home/jrosenstein/www/profile.php~')
-        False
-        >>> Query._path_looks_like_code('/home/jrosenstein/www/.git/HEAD')
-        False
-        """
-        return (
-            '/.' not in path and
-            path[-1] != '~' and
-            not path.endswith('tags') and
-            not path.endswith('TAGS')
-        )
-
-
-class Position(object):
-    """
-    >>> p1, p2 = Position('./hi.php', 20), Position('./hi.php:20')
-    >>> p1.path == p2.path and p1.line_number == p2.line_number
-    True
-    >>> p1
-    Position('./hi.php', 20)
-    >>> print(p1)
-    ./hi.php:20
-    >>> Position(p1)
-    Position('./hi.php', 20)
-    """
-
-    def __init__(self, *path_and_line_number):
-        """
-        You can use the two parameter version, and pass a
-        path and line number, or
-        you can use the one parameter version, and
-        pass a $path:$line_number string,
-        or another instance of Position to copy.
-        """
-        if len(path_and_line_number) == 2:
-            self.path, self.line_number = path_and_line_number
-        elif len(path_and_line_number) == 1:
-            arg = path_and_line_number[0]
-            if isinstance(arg, Position):
-                self.path, self.line_number = arg.path, arg.line_number
-            else:
-                try:
-                    self.path, line_number_s = arg.split(':')
-                    self.line_number = int(line_number_s)
-                except ValueError:
-                    raise ValueError(
-                        'inappropriately formatted Position string: %s'
-                        % path_and_line_number[0]
-                    )
-        else:
-            raise TypeError('Position takes 1 or 2 arguments')
-
-    def __repr__(self):
-        return 'Position(%s, %d)' % (repr(self.path), self.line_number)
-
-    def __str__(self):
-        return '%s:%d' % (self.path, self.line_number)
-
-
-class Patch(object):
-    """
-    Represents a range of a file and (optionally) a list of lines with which to
-    replace that range.
-
-    >>> p = Patch(2, 4, ['X', 'Y', 'Z'], 'x.php')
-    >>> print(p.render_range())
-    x.php:2-3
-    >>> p.start_position
-    Position('x.php', 2)
-    >>> l = ['a', 'b', 'c', 'd', 'e', 'f']
-    >>> p.apply_to(l)
-    >>> l
-    ['a', 'b', 'X', 'Y', 'Z', 'e', 'f']
-    """
-
-    def __init__(self, start_line_number, end_line_number=None, new_lines=None,
-                 path=None):  # noqa
-        """
-        Constructs a Patch object.
-
-        @param end_line_number  The line number just *after* the end of
-                                the range.
-                                Defaults to
-                                start_line_number + 1, i.e. a one-line
-                                diff.
-        @param new_lines        The set of lines with which to
-                                replace the range
-                                specified, or a newline-delimited string.
-                                Omitting this means that
-                                this "patch" doesn't actually
-                                suggest a change.
-        @param path             Path is optional only so that
-                                suggestors that have
-                                been passed a list of lines
-                                don't have to set the
-                                path explicitly.
-                                (It'll get set by the suggestor's caller.)
-        """
-        self.path = path
-        self.start_line_number = start_line_number
-        self.end_line_number = end_line_number
-        self.new_lines = new_lines
-
-        if self.end_line_number is None:
-            self.end_line_number = self.start_line_number + 1
-        if isinstance(self.new_lines, str):
-            self.new_lines = self.new_lines.splitlines(True)
-
-    def __repr__(self):
-        return 'Patch()' % ', '.join(map(repr, [
-            self.path,
-            self.start_line_number,
-            self.end_line_number,
-            self.new_lines
-        ]))
-
-    def apply_to(self, lines):
-        if self.new_lines is None:
-            raise ValueError('Can\'t apply patch without suggested new lines.')
-        lines[self.start_line_number:self.end_line_number] = self.new_lines
-
-    def render_range(self):
-        path = self.path or '<unknown>'
-        if self.start_line_number == self.end_line_number - 1:
-            return '%s:%d' % (path, self.start_line_number)
-        else:
-            return '%s:%d-%d' % (
-                path,
-                self.start_line_number, self.end_line_number - 1
-            )
-
-    def get_start_position(self):
-        return Position(self.path, self.start_line_number)
-    start_position = property(get_start_position)
-
-
 def print_patch(patch, lines_to_print, file_lines=None):
     if file_lines is None:
         file_lines = list(open(patch.path))
@@ -658,28 +234,26 @@ def print_patch(patch, lines_to_print, file_lines=None):
         print_file_line(i)
     for i in range(patch.start_line_number, patch.end_line_number):
         if patch.new_lines is not None:
-            terminal_print('- %s' % file_lines[i], color='RED')
+            terminal.terminal_print('- %s' % file_lines[i], color='RED')
         else:
-            terminal_print('* %s' % file_lines[i], color='YELLOW')
+            terminal.terminal_print('* %s' % file_lines[i], color='YELLOW')
     if patch.new_lines is not None:
         for line in patch.new_lines:
-            terminal_print('+ %s' % line, color='GREEN')
+            terminal.terminal_print('+ %s' % line, color='GREEN')
     for i in range(patch.end_line_number, end_context_line_number):
         print_file_line(i)
 
 
-yes_to_all = False
-
-
 def _ask_about_patch(patch, editor, default_no):
     global yes_to_all
+
     default_action = 'n' if default_no else 'y'
-    terminal_clear()
-    terminal_print('%s\n' % patch.render_range(), color='WHITE')
+    terminal.terminal_clear()
+    terminal.terminal_print('%s\n' % patch.render_range(), color='WHITE')
     print()
 
     lines = list(open(patch.path))
-    size = list(terminal_get_size())
+    size = list(terminal.terminal_get_size())
     print_patch(patch, size[0] - 20, lines)
 
     print()
@@ -772,118 +346,8 @@ def _delete_bookmark():
 
 
 #
-# Functions for working with the terminal.  Should probably be moved to a
-# standalone library.
-#
-
-def terminal_get_size(default_size=(25, 80)):
-    """
-    Return (number of rows, number of columns) for the terminal,
-    if they can be determined, or `default_size` if they can't.
-    """
-
-    def ioctl_gwinsz(fd):  # TABULATION FUNCTIONS
-        try:  # Discover terminal width
-            import fcntl
-            import termios
-            import struct
-            return struct.unpack(
-                'hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234')
-            )
-        except Exception:
-            return None
-
-    # try open fds
-    size = ioctl_gwinsz(0) or ioctl_gwinsz(1) or ioctl_gwinsz(2)
-    if not size:
-        # ...then ctty
-        try:
-            fd = os.open(os.ctermid(), os.O_RDONLY)
-            size = ioctl_gwinsz(fd)
-            os.close(fd)
-        except Exception:
-            pass
-    if not size:
-        # env vars or finally defaults
-        try:
-            size = (os.environ['LINES'], os.environ['COLUMNS'])
-        except Exception:
-            return default_size
-
-    return map(int, size)
-
-
-def terminal_clear():
-    """
-    Like calling the `clear` UNIX command.  If that fails, just prints a bunch
-    of newlines :-P
-    """
-    if not _terminal_use_capability('clear'):
-        print('\n' * 8)
-
-
-def terminal_move_to_beginning_of_line():
-    """
-    Jumps the cursor back to the beginning of the current line of text.
-    """
-    if not _terminal_use_capability('cr'):
-        print()
-
-
-def _terminal_use_capability(capability_name):
-    """
-    If the terminal supports the given capability, output it.  Return whether
-    it was output.
-    """
-    import curses
-    curses.setupterm()
-    capability = curses.tigetstr(capability_name)
-    if capability:
-        sys.stdout.write(unicode(capability, 'ascii'))
-    return bool(capability)
-
-
-def terminal_print(text, color):
-    """Print text in the specified color, without a terminating newline."""
-    _terminal_set_color(color)
-    print(text, end='')
-    _terminal_restore_color()
-
-
-def _terminal_set_color(color):
-    import curses
-
-    def color_code(set_capability, possible_colors):
-        try:
-            color_index = possible_colors.split(' ').index(color)
-        except ValueError:
-            return None
-        set_code = curses.tigetstr(set_capability)
-        if not set_code:
-            return None
-        return curses.tparm(set_code, color_index)
-    code = (
-        color_code(
-            'setaf', 'BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE'
-        ) or color_code(
-            'setf', 'BLACK BLUE GREEN CYAN RED MAGENTA YELLOW WHITE'
-        )
-    )
-    if code:
-        code = unicode(code, 'ascii')
-        sys.stdout.write(code)
-
-
-def _terminal_restore_color():
-    import curses
-    restore_code = curses.tigetstr('sgr0')
-    if restore_code:
-        sys.stdout.write(unicode(restore_code, 'ascii'))
-
-#
 # Code to make this run as an executable from the command line.
 #
-
 
 def _parse_command_line():
     global yes_to_all
@@ -920,7 +384,8 @@ def _parse_command_line():
             write Python code that looks like:
 
               import codemod
-              codemod.Query(...).run_interactive()
+              query = codemod.Query(...)
+              run_interactive(query)
 
             See the documentation for the Query class for details.
 
@@ -991,9 +456,8 @@ def _parse_command_line():
     if not arguments.match:
         parser.exit(0, parser.format_usage())
 
-    yes_to_all = arguments.accept_all
-
     query_options = {}
+    yes_to_all = arguments.accept_all
 
     query_options['suggestor'] = (
         multiline_regex_suggestor if arguments.m else regex_suggestor
@@ -1008,8 +472,10 @@ def _parse_command_line():
         exclude_paths = arguments.exclude_paths.split(',')
     else:
         exclude_paths = None
-    query_options['path_filter'] = path_filter(arguments.extensions.split(','),
-                                               exclude_paths)
+    query_options['path_filter'] = helpers.path_filter(
+        arguments.extensions.split(','),
+        exclude_paths
+    )
 
     options = {}
     options['query'] = Query(**query_options)
