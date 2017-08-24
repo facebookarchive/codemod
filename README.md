@@ -10,7 +10,7 @@ codemod
 Overview
 --------
 
-codemod is a tool/library to assist you with large-scale codebase refactors that can be partially automated but still require human oversight and occassional intervention.
+codemod is a tool/library to assist you with large-scale codebase refactors that can be partially automated but still require human oversight and occasional intervention.
 
 Example: Let's say you're deprecating your use of the `<font>` tag.  From the command line, you might make progress by running:
 
@@ -87,7 +87,7 @@ Background
 
 Part of why most code -- and most software -- sucks so much is that making sweeping changes is hard.
 
-Let's say that a month ago you wrote a function that you -- or your entire company -- have been using frequently. And now you decide to change its name, or change the order of its parameters, or split it up into two separate functions and then have half the call sites use the old one and half the call sites use the new one, or change its return type from a scalar to a structure with additional information. IDEs and standard \*nix tools like sed can help, but you typically have to make a tradeoff between introducing errors and introducing tedium. The result, all too often, is that we decide (often unconsciously) that the sweeping change just isn't worth it, and leave the undesirable pattern untouched for future versions of ourselves and others to grumble about, while the pattern grows more and more endemic to the code base.
+Let's say that a month ago you wrote a function that you -- or your entire company -- have been using frequently. And now you decide to change its name, or change the order of its parameters, or split it up into two separate functions and then have half the call sites use the old one and half the call sites use the new one, or change its return type from a scalar to a structure with additional information. IDEs and standard \*nix tools like sed can help, but you typically have to make a trade-off between introducing errors and introducing tedium. The result, all too often, is that we decide (often unconsciously) that the sweeping change just isn't worth it, and leave the undesirable pattern untouched for future versions of ourselves and others to grumble about, while the pattern grows more and more endemic to the code base.
 
 What you really want is to be able to describe an arbitrary transform -- using either regexes in the 80% case or Python code for more complex transformations -- that matches for lines (or sets of lines) of source code and converts them to something more desirable, but then have a tool that will show you each of the change sites one at a time and ask you either to accept the change, reject the change, or manually intervene using your editor of choice.
 
