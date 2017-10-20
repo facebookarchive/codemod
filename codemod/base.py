@@ -440,7 +440,7 @@ class Query(object):
         for path in path_list:
             try:
                 lines = list(open(path))
-            except IOError:
+            except (IOError, UnicodeDecodeError):
                 # If we can't open the file--perhaps it's a symlink whose
                 # destination no loner exists--then short-circuit.
                 continue
