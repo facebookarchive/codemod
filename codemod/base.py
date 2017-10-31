@@ -806,7 +806,7 @@ def terminal_get_size(default_size=(25, 80)):
     if not size:
         # env vars or finally defaults
         try:
-            size = (os.environ.get('LINES'), os.environ.get('COLUMNS'))
+            size = (os.environ['LINES'], os.environ['COLUMNS'])
         except Exception:
             return default_size
 
@@ -838,9 +838,8 @@ def _terminal_use_capability(capability_name):
     import curses
     curses.setupterm()
     capability = curses.tigetstr(capability_name)
-    capability = unicode(capability, 'ascii')
     if capability:
-        sys.stdout.write(capability)
+        sys.stdout.write(unicode(capability, 'ascii'))
     return bool(capability)
 
 
@@ -877,7 +876,9 @@ def _terminal_set_color(color):
 
 def _terminal_restore_color():
     import curses
-    sys.stdout.write(unicode(curses.tigetstr('sgr0'), 'ascii'))
+    restore_code = curses.tigetstr('sgr0')
+    if restore_code:
+        sys.stdout.write(unicode(restore_code, 'ascii'))
 
 #
 # Code to make this run as an executable from the command line.
