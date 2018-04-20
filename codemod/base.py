@@ -188,7 +188,8 @@ def multiline_regex_suggestor(regex, substitution=None, ignore_case=False):
                 end_line_number=end_row + 1,
                 new_lines=new_lines
             )
-            pos = match.start() + 1
+            delta = 1 if new_lines is None else min(1, len(new_lines))
+            pos = match.start() + delta
 
     return suggestor
 
