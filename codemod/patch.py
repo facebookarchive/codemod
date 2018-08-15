@@ -15,6 +15,8 @@ class Patch(object):
     >>> p.apply_to(l)
     >>> l
     ['a', 'b', 'X', 'Y', 'Z', 'e', 'f']
+    >>> print p
+    Patch('x.php', 2, 4, ['X', 'Y', 'Z'])
     """
 
     def __init__(self, start_line_number, end_line_number=None, new_lines=None,
@@ -51,7 +53,7 @@ class Patch(object):
             self.new_lines = self.new_lines.splitlines(True)
 
     def __repr__(self):
-        return 'Patch()' % ', '.join(map(repr, [
+        return 'Patch(%s)' % ', '.join(map(repr, [
             self.path,
             self.start_line_number,
             self.end_line_number,
