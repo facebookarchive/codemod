@@ -13,6 +13,13 @@ import termios
 import struct
 
 
+def _unicode(s, encoding='utf-8'):
+        if type(s) == bytes:
+            return s.decode(encoding, 'ignore')
+        else:
+            return str(s)
+
+
 def terminal_get_size(default_size=(25, 80)):
     """
     Return (number of rows, number of columns) for the terminal,
@@ -72,7 +79,7 @@ def _terminal_use_capability(capability_name):
     curses.setupterm()
     capability = curses.tigetstr(capability_name)
     if capability:
-        sys.stdout.write(unicode(capability, 'ascii'))
+        sys.stdout.write(_unicode(capability))
     return bool(capability)
 
 
@@ -101,11 +108,11 @@ def _terminal_set_color(color):
         )
     )
     if code:
-        code = unicode(code, 'ascii')
+        code = _unicode(code)
         sys.stdout.write(code)
 
 
 def _terminal_restore_color():
     restore_code = curses.tigetstr('sgr0')
     if restore_code:
-        sys.stdout.write(unicode(restore_code, 'ascii'))
+        sys.stdout.write(_unicode(restore_code))

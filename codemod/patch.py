@@ -15,7 +15,7 @@ class Patch(object):
     >>> p.apply_to(l)
     >>> l
     ['a', 'b', 'X', 'Y', 'Z', 'e', 'f']
-    >>> print p
+    >>> print(p)
     Patch('x.php', 2, 4, ['X', 'Y', 'Z'])
     """
 
